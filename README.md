@@ -1,27 +1,54 @@
-<img width="1672" height="941" alt="9aa659ea-7965-4d3b-ae24-1754f9ea5a40" src="https://github.com/user-attachments/assets/6cb5f1e2-aa7a-4a4e-93f6-966c2600b38b" />
+<p align="center">
+  <img width="1672" height="941" alt="Allay Auth banner" src="https://github.com/user-attachments/assets/6cb5f1e2-aa7a-4a4e-93f6-966c2600b38b" />
+</p>
 
-# Allay Auth
+<h1 align="center">Allay Auth</h1>
 
-Allay Auth is a Paper/Folia Minecraft plugin that links Minecraft UUIDs to Discord accounts and requires Discord confirmation for logins.
+<p align="center">
+  Discord-based 2FA and account linking for Paper/Folia Minecraft servers.
+</p>
+
+<p align="center">
+  <b>Paper</b> · <b>Folia</b> · <b>Discord</b> · <b>SQLite/PostgreSQL/MySQL</b>
+</p>
+
+---
+
+## What is it?
+
+**Allay Auth** links Minecraft players to Discord accounts and protects logins with Discord confirmation.
+
+On first join, the player receives a one-time code in Minecraft.  
+After linking through Discord, future logins require confirmation from the linked Discord account.
+
+```text
+Minecraft join → Discord confirmation → access granted
+```
 
 ## Features
 
-- First join flow: Minecraft player gets a one-time `XXX-XXX` code, then links through Discord `/auth code:<code>`.
-- Returning player flow: the Discord bot sends a DM with login details and buttons to confirm, trust the IP, or deny the login.
-- Limbo/freeze mode blocks movement, chat, commands, damage, block changes, inventory interaction, portals, vehicles, item drop/pickup, and entity interaction until auth is complete.
-- Folia-safe scheduler adapter with reflective Folia dispatch and Paper/Bukkit fallback.
-- SQLite by default, with PostgreSQL and MySQL/MariaDB backends.
-- Discord log-channel audit messages plus persistent `audit_logs`.
-- Optional local MaxMind GeoIP country lookup.
-- Optional bearer-token protected HTTP health endpoint.
+- Discord account linking with `/auth code:<code>`
+- Login confirmation through Discord DM buttons
+- IP trust sessions
+- Deny suspicious logins
+- Folia-safe scheduler abstraction
+- Limbo/freeze mode before auth
+- SQLite by default
+- PostgreSQL and MySQL/MariaDB support
+- Discord audit log channel
+- Optional local MaxMind GeoIP
+- Optional protected HTTP health API
 
 ## Requirements
 
-- Java 21+ for Paper/Folia/Purpur 1.20+.
-- Paper/Folia 1.21.x target, with Paper/Purpur 1.20+ compatibility.
-- Maven for building.
+| Runtime | Version |
+|---|---|
+| Java | 21+ |
+| Server | Paper / Folia / Purpur 1.20+ |
+| Target | Paper / Folia 1.21.x |
+| Build tool | Maven |
 
-The project uses Java 21 source/target. A separate Java 17 legacy build profile can be added later if you need one jar specifically compiled for old 1.16.1 server stacks.
+> Legacy Java 17 / 1.16.1 support can be added later as a separate compatibility build.
 
 ## Build
 
@@ -29,7 +56,7 @@ The project uses Java 21 source/target. A separate Java 17 legacy build profile 
 mvn clean package
 ```
 
-The shaded jar will be created at:
+Output:
 
 ```text
 target/AllayAuth-1.0.0-SNAPSHOT.jar
@@ -37,46 +64,42 @@ target/AllayAuth-1.0.0-SNAPSHOT.jar
 
 ## Installation
 
-1. Build the plugin jar.
-2. Put the jar into your server `plugins/` folder.
-3. Start the server once to generate `plugins/AllayAuth/config.yml`.
-4. Stop the server and edit the config.
-5. Set at minimum:
-   - `discord.bot-token`
-   - `discord.guild-id`
-   - `discord.log-channel-id`
-   - `discord.owner-ids`
-   - `security.secret`
-   - `messages.server-link`
-6. Start the server again.
+1. Build the jar.
+2. Put it into `plugins/`.
+3. Start the server once.
+4. Edit `plugins/AllayAuth/config.yml`.
+5. Restart the server.
 
-If the Discord bot token is empty or the bot cannot connect, the plugin stays enabled, but players are kicked on join because auth cannot be completed.
+Minimum required config:
 
-## Discord bot setup
+```yaml
+discord:
+  bot-token: "YOUR_TOKEN"
+  guild-id: "YOUR_GUILD_ID"
+  log-channel-id: "YOUR_LOG_CHANNEL_ID"
+  owner-ids:
+    - "YOUR_DISCORD_ID"
 
-Create a Discord application and bot in the Discord Developer Portal, copy the bot token, and invite it with permissions to:
+security:
+  secret: "CHANGE_ME_TO_LONG_RANDOM_SECRET"
+
+messages:
+  server-link: "https://discord.gg/example"
+```
+
+If the Discord bot is not configured, players will be kicked because authentication cannot be completed.
+
+## Discord setup
+
+Create a Discord application and bot in the Discord Developer Portal.
+
+The bot needs permissions to:
 
 - register slash commands
 - send direct messages
 - send messages in the configured log channel
 
-Slash commands are registered automatically on bot ready. If `discord.guild-id` is configured, commands are registered to that guild for faster updates.
-
-## MaxMind GeoIP
-
-GeoIP uses a local MaxMind database and never sends player IPs to an external API during login.
-
-1. Download `GeoLite2-Country.mmdb` from MaxMind.
-2. Put it at `plugins/AllayAuth/GeoLite2-Country.mmdb`, or change `geoip.database-file`.
-3. Keep:
-
-```yaml
-geoip:
-  enabled: true
-  provider: "maxmind-local"
-```
-
-If the `.mmdb` file is missing, GeoIP is disabled automatically and the plugin continues to run.
+Slash commands are registered automatically when the bot starts.
 
 ## Minecraft commands
 
@@ -90,7 +113,7 @@ If the `.mmdb` file is missing, GeoIP is disabled automatically and the plugin c
 | `/allayauth revoke-session <player>` | `allayauth.moderator` |
 | `/allayauth debug <player>` | `allayauth.admin` |
 
-## Discord slash commands
+## Discord commands
 
 | Command | Access |
 |---|---|
@@ -105,16 +128,18 @@ If the `.mmdb` file is missing, GeoIP is disabled automatically and the plugin c
 | `/revokesession minecraft:<nick>` | owner/mod |
 | `/config get/set/list/reload` | owner only |
 
-Protected keys cannot be changed through Discord `/config`:
+Protected config keys cannot be changed from Discord:
 
-- `discord.bot-token`
-- `storage.postgres.password`
-- `storage.mysql.password`
-- `security.secret`
+```text
+discord.bot-token
+storage.postgres.password
+storage.mysql.password
+security.secret
+```
 
 ## Storage
 
-Default SQLite config:
+Default:
 
 ```yaml
 storage:
@@ -122,11 +147,19 @@ storage:
   sqlite-file: "plugins/AllayAuth/database.db"
 ```
 
-Supported values: `sqlite`, `postgresql`, `postgres`, `mysql`, `mariadb`.
+Supported backends:
+
+```text
+sqlite
+postgresql
+postgres
+mysql
+mariadb
+```
 
 ## Web API
 
-Enable it with:
+Optional local API:
 
 ```yaml
 web:
@@ -136,7 +169,7 @@ web:
   token: "CHANGE_ME"
 ```
 
-Every request must include:
+Requests require:
 
 ```text
 Authorization: Bearer <web.token>
@@ -144,14 +177,36 @@ Authorization: Bearer <web.token>
 
 Endpoints:
 
-- `GET /health`
-- `GET /stats`
-- `GET /players/pending`
-- `GET /players/authenticated`
+```text
+GET /health
+GET /stats
+GET /players/pending
+GET /players/authenticated
+```
 
-## Notes
+## GeoIP
 
-- IPs are hashed in the database when `security.hash-ip-in-database: true`.
-- Full IPs are shown only in Discord DM and admin log messages under spoiler formatting.
-- Bypass through `allayauth.bypass` is always audited.
-- Real player inventory is not cleared during limbo.
+Allay Auth can use a local MaxMind database.
+
+```yaml
+geoip:
+  enabled: true
+  provider: "maxmind-local"
+  database-file: "plugins/AllayAuth/GeoLite2-Country.mmdb"
+```
+
+If the database file is missing, GeoIP is disabled automatically.
+
+No external GeoIP API is called during login.
+
+## Security notes
+
+- Player IPs can be hashed in the database.
+- Full IPs are only shown in Discord DM/admin logs.
+- IPs in Discord messages are displayed under spoiler formatting.
+- `allayauth.bypass` is always audited.
+- Limbo does not clear the real player inventory.
+
+## License
+
+See [`LICENSE`](LICENSE).
