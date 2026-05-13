@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload plugin jar
         if: matrix.java == '21'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: AllayAuth-java21
           path: target/AllayAuth-*.jar
