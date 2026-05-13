@@ -1,0 +1,6 @@
+target/
+.idea/
+*.iml
+*.log
+plugins/AllayAuth/database.db
+plugins/AllayAuth/GeoLite2-Country.mmdb

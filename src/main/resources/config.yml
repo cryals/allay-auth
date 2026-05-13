@@ -1,0 +1,93 @@
+discord:
+  guild-id: ""
+  bot-token: ""
+  owner-ids:
+    - ""
+  moderator-role-ids:
+    - ""
+  log-channel-id: ""
+
+security:
+  secret: "CHANGE_ME_RANDOM_64_CHARS"
+  hash-ip-in-database: true
+  encrypt-sensitive-fields: false
+
+login:
+  timeout-seconds: 300
+  session-duration: "7d"
+  require-confirm-on-new-ip: true
+  require-confirm-on-new-country: true
+  kick-on-timeout: true
+
+code:
+  length: 6
+  format: "XXX-XXX"
+  alphabet: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  expires-in-seconds: 300
+  max-attempts-per-discord: 5
+  max-attempts-per-player: 3
+  max-attempts-per-ip: 10
+
+limbo:
+  mode: "freeze"
+  teleport-enabled: true
+  world: "auth"
+  x: 0.5
+  y: 100.0
+  z: 0.5
+  yaw: 0
+  pitch: 0
+  gamemode: "adventure"
+  invulnerable: true
+  block-chat: true
+  block-commands: true
+  allowed-commands:
+    - "help"
+    - "discord"
+
+geoip:
+  enabled: true
+  provider: "maxmind-local"
+  database-file: "plugins/AllayAuth/GeoLite2-Country.mmdb"
+  cache-duration: "24h"
+
+storage:
+  type: "sqlite"
+  sqlite-file: "plugins/AllayAuth/database.db"
+  postgres:
+    host: "127.0.0.1"
+    port: 5432
+    database: "allayauth"
+    username: "allayauth"
+    password: ""
+    pool-size: 5
+  mysql:
+    host: "127.0.0.1"
+    port: 3306
+    database: "allayauth"
+    username: "allayauth"
+    password: ""
+    pool-size: 5
+
+messages:
+  lang: "ru"
+  server-link: "https://discord.gg/example"
+
+rate-limit:
+  code-create-per-ip: "5/10m"
+  code-create-per-player: "3/10m"
+  auth-attempts-per-discord: "5/10m"
+  button-clicks: "10/1m"
+  dropauth: "10/1h"
+
+bypass:
+  enabled: true
+  uuids: []
+  permissions:
+    - "allayauth.bypass"
+
+web:
+  enabled: false
+  host: "127.0.0.1"
+  port: 25526
+  token: "CHANGE_ME"

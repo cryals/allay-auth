@@ -1,0 +1,36 @@
+name: AllayAuth
+version: ${project.version}
+main: dev.allayauth.AllayAuthPlugin
+api-version: "1.16"
+author: allay
+description: Discord based account linking and login confirmation.
+folia-supported: true
+commands:
+  allayauth:
+    description: Allay Auth administration command.
+    usage: /allayauth <reload|status|unlink|force-link|sessions|revoke-session|debug>
+    aliases: [aauth]
+permissions:
+  allayauth.admin:
+    description: Full Allay Auth access.
+    default: op
+    children:
+      allayauth.reload: true
+      allayauth.unlink: true
+      allayauth.info: true
+      allayauth.moderator: true
+  allayauth.moderator:
+    description: Manage links and sessions.
+    default: op
+  allayauth.bypass:
+    description: Bypass Discord authorization.
+    default: false
+  allayauth.reload:
+    description: Reload Allay Auth configuration.
+    default: op
+  allayauth.unlink:
+    description: Unlink Minecraft accounts.
+    default: op
+  allayauth.info:
+    description: View Allay Auth status.
+    default: op
