@@ -1,3 +1,5 @@
+<img width="1672" height="941" alt="9aa659ea-7965-4d3b-ae24-1754f9ea5a40" src="https://github.com/user-attachments/assets/6cb5f1e2-aa7a-4a4e-93f6-966c2600b38b" />
+
 # Allay Auth
 
 Allay Auth is a Paper/Folia Minecraft plugin that links Minecraft UUIDs to Discord accounts and requires Discord confirmation for logins.
