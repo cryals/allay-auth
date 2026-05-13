@@ -1,8 +1,8 @@
+# Allay Auth
+
 <p align="center">
   <img width="1672" height="941" alt="Allay Auth banner" src="https://github.com/user-attachments/assets/6cb5f1e2-aa7a-4a4e-93f6-966c2600b38b" />
 </p>
-
-<h1 align="center">Allay Auth</h1>
 
 <p align="center">
   Discord-based 2FA and account linking for Paper/Folia Minecraft servers.
