@@ -21,7 +21,7 @@
         <postgres.version>42.7.8</postgres.version>
         <mysql.version>9.5.0</mysql.version>
         <geoip.version>4.4.0</geoip.version>
-        <adventure.version>4.25.0</adventure.version>
+        <adventure.version>5.1.1</adventure.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
