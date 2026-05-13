@@ -1,0 +1,141 @@
+name: Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build MkDocs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+          cache: pip
+
+      - name: Install MkDocs
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install mkdocs
+
+      - name: Build site
+        run: mkdocs build --strict
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy-pages:
+    name: Deploy GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy-wiki:
+    name: Deploy GitHub Wiki
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Publish Markdown to wiki
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WIKI_URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.wiki.git
+        run: |
+          set -euo pipefail
+
+          rm -rf wiki
+          if git clone "$WIKI_URL" wiki; then
+            echo "Existing wiki cloned."
+          else
+            echo "Wiki repository is not initialized yet; creating local wiki branch."
+            mkdir wiki
+            git -C wiki init
+            git -C wiki checkout -B master
+            git -C wiki remote add origin "$WIKI_URL"
+          fi
+
+          find wiki -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+
+          cp docs/index.md wiki/Home.md
+          cp docs/getting-started.md wiki/Getting-started.md
+          cp docs/auth-flow.md wiki/Auth-flow.md
+          cp docs/architecture.md wiki/Architecture.md
+          cp docs/configuration.md wiki/Configuration.md
+          cp docs/discord.md wiki/Discord.md
+          cp docs/minecraft.md wiki/Minecraft.md
+          cp docs/storage.md wiki/Storage.md
+          cp docs/security.md wiki/Security.md
+          cp docs/api-events.md wiki/API-and-events.md
+          cp docs/web-api.md wiki/Web-API.md
+          cp docs/ci-cd.md wiki/CI-CD.md
+          cp docs/reference/files.md wiki/Reference-files.md
+          cp docs/reference/functions.md wiki/Reference-functions.md
+
+          cat > wiki/_Sidebar.md <<'SIDEBAR'
+          * [Главная](Home)
+          * [Быстрый старт](Getting-started)
+          * [Как работает авторизация](Auth-flow)
+          * [Архитектура](Architecture)
+          * [Конфигурация](Configuration)
+          * [Discord](Discord)
+          * [Minecraft](Minecraft)
+          * [Хранилище](Storage)
+          * [Безопасность](Security)
+          * [API и события](API-and-events)
+          * [Web API](Web-API)
+          * [CI/CD](CI-CD)
+          * [Файлы проекта](Reference-files)
+          * [Функции и методы](Reference-functions)
+          SIDEBAR
+
+          git -C wiki config user.name "github-actions[bot]"
+          git -C wiki config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C wiki add -A
+
+          if git -C wiki diff --cached --quiet; then
+            echo "Wiki is already up to date."
+            exit 0
+          fi
+
+          git -C wiki commit -m "Deploy documentation"
+          branch="$(git -C wiki branch --show-current)"
+          if [ -z "$branch" ]; then
+            branch="master"
+          fi
+          git -C wiki push origin "HEAD:${branch}"
