@@ -37,7 +37,6 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.x"
-          cache: pip
 
       - name: Install MkDocs
         run: |
@@ -87,6 +86,7 @@ jobs:
           set -euo pipefail
 
           rm -rf wiki
+
           if git clone "$WIKI_URL" wiki; then
             echo "Existing wiki cloned."
           else
@@ -141,8 +141,10 @@ jobs:
           fi
 
           git -C wiki commit -m "Deploy documentation"
+
           branch="$(git -C wiki branch --show-current)"
           if [ -z "$branch" ]; then
             branch="master"
           fi
+
           git -C wiki push origin "HEAD:${branch}"
