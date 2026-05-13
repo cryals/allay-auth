@@ -7,12 +7,26 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release, for example v1.0.0"
-        required: true
+        description: "Release tag, for example v1.0.0. Leave empty to use pom.xml version."
+        required: false
         type: string
+      prerelease:
+        description: "Mark release as prerelease"
+        required: false
+        default: false
+        type: boolean
+      draft:
+        description: "Create release as draft"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -32,46 +46,153 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Resolve version
+      - name: Resolve release tag
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            tag="$REF_NAME"
           else
-            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            tag="$INPUT_TAG"
+
+            if [ -z "$tag" ]; then
+              version="$(mvn help:evaluate \
+                -Dexpression=project.version \
+                -q \
+                -DforceStdout)"
+
+              version="${version%-SNAPSHOT}"
+              tag="v$version"
+            fi
           fi
 
+          echo "Resolved tag: $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Validate release tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          tag="${{ steps.version.outputs.tag }}"
-          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Release tag must look like v1.2.3 or v1.2.3-beta.1, got: $tag"
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must look like v1.2.3 or v1.2.3-beta.1"
+            echo "Got: $TAG"
             exit 1
           fi
 
-      - name: Checkout requested tag
-        if: github.event_name == 'workflow_dispatch'
+      - name: Prepare git tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git fetch --tags --force
-          git checkout "${{ steps.version.outputs.tag }}"
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG already exists."
+            git checkout "$TAG"
+          else
+            if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+              echo "Tag $TAG does not exist. Creating it from current commit."
+              git tag -a "$TAG" -m "Release $TAG"
+              git push origin "$TAG"
+            else
+              echo "Tag $TAG was expected to exist for tag push event."
+              exit 1
+            fi
+          fi
 
       - name: Build with Maven
         run: mvn -B -DskipTests package
 
-      - name: Prepare release asset
+      - name: Prepare release assets
+        id: assets
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          mkdir -p dist
-          cp target/AllayAuth-*.jar "dist/AllayAuth-${{ steps.version.outputs.tag }}.jar"
-          sha256sum "dist/AllayAuth-${{ steps.version.outputs.tag }}.jar" > "dist/AllayAuth-${{ steps.version.outputs.tag }}.jar.sha256"
-          cat "dist/AllayAuth-${{ steps.version.outputs.tag }}.jar.sha256"
+          set -euo pipefail
 
-      - name: Create GitHub release
+          mkdir -p dist
+
+          jar_file="$(find target \
+            -maxdepth 1 \
+            -type f \
+            -name 'AllayAuth-*.jar' \
+            ! -name '*sources*' \
+            ! -name '*javadoc*' \
+            ! -name 'original-*' \
+            | sort \
+            | head -n 1)"
+
+          if [ -z "$jar_file" ]; then
+            echo "No plugin jar found in target/"
+            find target -maxdepth 1 -type f || true
+            exit 1
+          fi
+
+          release_jar="dist/AllayAuth-$TAG.jar"
+          checksum_file="$release_jar.sha256"
+
+          cp "$jar_file" "$release_jar"
+          sha256sum "$release_jar" > "$checksum_file"
+
+          echo "Using jar: $jar_file"
+          echo "Release jar: $release_jar"
+          cat "$checksum_file"
+
+          echo "jar=$release_jar" >> "$GITHUB_OUTPUT"
+          echo "checksum=$checksum_file" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          JAR: ${{ steps.assets.outputs.jar }}
+          CHECKSUM: ${{ steps.assets.outputs.checksum }}
+          IS_PRERELEASE: ${{ inputs.prerelease }}
+          IS_DRAFT: ${{ inputs.draft }}
         run: |
-          gh release create "${{ steps.version.outputs.tag }}" \
-            dist/AllayAuth-${{ steps.version.outputs.tag }}.jar \
-            dist/AllayAuth-${{ steps.version.outputs.tag }}.jar.sha256 \
-            --title "Allay Auth ${{ steps.version.outputs.tag }}" \
-            --generate-notes \
-            --verify-tag
+          set -euo pipefail
+
+          flags=()
+
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            flags+=("--prerelease")
+          fi
+
+          if [ "$IS_DRAFT" = "true" ]; then
+            flags+=("--draft")
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists. Updating assets."
+
+            gh release upload "$TAG" \
+              "$JAR" \
+              "$CHECKSUM" \
+              --clobber
+
+            gh release edit "$TAG" \
+              --title "Allay Auth $TAG" \
+              "${flags[@]}"
+          else
+            echo "Creating release $TAG."
+
+            gh release create "$TAG" \
+              "$JAR" \
+              "$CHECKSUM" \
+              --title "Allay Auth $TAG" \
+              --generate-notes \
+              --verify-tag \
+              "${flags[@]}"
+          fi
