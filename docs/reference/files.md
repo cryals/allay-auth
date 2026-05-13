@@ -8,6 +8,9 @@
 | `README.md` | Короткая инструкция для GitHub |
 | `LICENSE` | AGPL-3.0 license |
 | `.gitignore` | Исключает build output и локальные runtime-файлы |
+| `.gitattributes` | Фиксирует LF line endings и binary-типы |
+| `.markdownlint-cli2.jsonc` | Конфиг Markdown linter |
+| `.yamllint.yml` | Конфиг YAML linter |
 | `mkdocs.yml` | Настройка сайта документации |
 
 ## `.github/workflows`
@@ -17,6 +20,7 @@
 | `ci.yml` | Проверка сборки и upload jar artifact |
 | `docs.yml` | MkDocs -> GitHub Pages и Markdown -> GitHub Wiki |
 | `release.yml` | Сборка jar и создание GitHub Release по тегу |
+| `.github/dependabot.yml` | Weekly PR для Maven и GitHub Actions updates |
 
 ## Resources
 

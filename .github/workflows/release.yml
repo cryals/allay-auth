@@ -41,6 +41,20 @@ jobs:
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Validate release tag
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must look like v1.2.3 or v1.2.3-beta.1, got: $tag"
+            exit 1
+          fi
+
+      - name: Checkout requested tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --tags --force
+          git checkout "${{ steps.version.outputs.tag }}"
+
       - name: Build with Maven
         run: mvn -B -DskipTests package
 
@@ -48,6 +62,8 @@ jobs:
         run: |
           mkdir -p dist
           cp target/AllayAuth-*.jar "dist/AllayAuth-${{ steps.version.outputs.tag }}.jar"
+          sha256sum "dist/AllayAuth-${{ steps.version.outputs.tag }}.jar" > "dist/AllayAuth-${{ steps.version.outputs.tag }}.jar.sha256"
+          cat "dist/AllayAuth-${{ steps.version.outputs.tag }}.jar.sha256"
 
       - name: Create GitHub release
         env:
@@ -55,5 +71,7 @@ jobs:
         run: |
           gh release create "${{ steps.version.outputs.tag }}" \
             dist/AllayAuth-${{ steps.version.outputs.tag }}.jar \
+            dist/AllayAuth-${{ steps.version.outputs.tag }}.jar.sha256 \
             --title "Allay Auth ${{ steps.version.outputs.tag }}" \
-            --generate-notes
+            --generate-notes \
+            --verify-tag
